@@ -1,23 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <libgen.h>  // dirname
+
+#ifdef _WINDOWS
+    #include <windows.h>
+#else
+    #include <unistd.h>
+    #include <libgen.h>  // dirname
+#endif
 
 #include "readconfC.h"
-
-void get_executable_path(char *path, size_t size);
-
-// the execution path of the process
-void get_executable_path(char *path, size_t size)
-{
-    ssize_t len = readlink("/proc/self/exe", path, size - 1);
-    if (len != -1)
-    {
-        path[len] = '\0';
-        strcpy(path, dirname(path));
-    }
-}
 
 // remove spaces and new line characters
 void trim(char *str)
@@ -57,7 +49,7 @@ void remove_spaces(char *str)
 // validation of 'config.conf'
 int validate_config_file(const char *filename)
 {
-#ifndef WINDOWS
+#ifndef _WINDOWS
     // only root
     if (getuid() != 0)
     {
@@ -126,19 +118,19 @@ void* get_config_value(const char *filename, const char *key, CONF_TYPE type)
                 fclose(file);
                 switch (type)
                 {
-                    case STRING:
+                    case TYPE_STRING:
                     {
                         char *value_copy = strdup(config_value);
                         remove_spaces(value_copy);
                         return value_copy;
                     }
-                    case INT:
+                    case TYPE_INT:
                     {
                         int *int_value = malloc(sizeof(int));
                         *int_value = atoi(config_value);
                         return int_value;
                     }
-                    case BOOL:
+                    case TYPE_BOOL:
                     {
                         int *bool_value = malloc(sizeof(int));
                         *bool_value = (strcmp(config_value, "true") == 0 || strcmp(config_value, "1") == 0) ? 1 : 0;  
@@ -157,4 +149,32 @@ void* get_config_value(const char *filename, const char *key, CONF_TYPE type)
 
     fclose(file);
     return NULL;
+}
+
+// the execution path of the process
+void get_executable_path(char* path, size_t size)
+{
+#ifdef _WINDOWS
+    // It is recommended that you specify the path directly.
+    // example "C:\\aaa/bbb/ccc/config.conf";
+    DWORD result = GetModuleFileName(NULL, path, size);
+    if (result == 0 || result >= size )
+    {
+        return;
+    }
+
+    char* last_backslash = strrchr(path, '\\');
+    if (last_backslash != NULL)
+    {
+        *last_backslash = '\0';
+    }
+
+#else
+    ssize_t len = readlink("/proc/self/exe", path, size - 1);
+    if (len != -1)
+    {
+        path[len] = '\0';
+        strcpy(path, dirname(path));
+    }
+#endif
 }
