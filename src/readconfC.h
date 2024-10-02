@@ -5,6 +5,8 @@
     #include <stddef.h>
 #endif
 
+// https://github.com/reri72/readconfC
+
 #ifdef __cplusplus
 extern "C" {
 #endif
